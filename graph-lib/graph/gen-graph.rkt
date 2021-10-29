@@ -22,4 +22,6 @@
   (edge-weight graph u v #:default [default])
   (transpose graph)
   (graph-copy graph)
-  (graph-union! graph other))
+  (graph-union! graph other)
+  (add-vertex-attr! graph v attr [fmt])
+  (get-attrs graph v))

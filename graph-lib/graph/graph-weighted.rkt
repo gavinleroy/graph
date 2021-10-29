@@ -1,3 +1,5 @@
+;; Last edited, Gavin Gray ETHZ, 10.2021
+
 #lang racket/base
 
 (require "gen-graph.rkt")
@@ -15,9 +17,20 @@
 
 (define-syntax-rule (get-adjlist g) (unsafe-struct*-ref g 0))
 (define-syntax-rule (get-weights g) (unsafe-struct*-ref g 1))
+(define-syntax-rule (get-attrs-hash g) (unsafe-struct*-ref g 2))
 
 ;; A WeightedGraph is a (weighted-graph AdjacencyList Weights)
-(struct weighted-graph (adjlist weights) 
+;;
+;; NOTE this graph has been extended to hold node attribute information
+;;      an attribute is of the form '(<atom> . <value>) and is used
+;;      when writing to a graphviz file.
+;;      HACK currently, only location attributes are supported, namely,
+;;      attributes of the form '('pos  (<x> . <y>))
+;;
+;;      this quick fix has a few side-effects
+;;      1. graphs cannot be initialized with starting data
+;;         (e.g. mk-weighted-graph/... must be called with an empty list)
+(struct weighted-graph (adjlist weights attrs)
   #:methods gen:equal+hash
   [(define (equal-proc g1 g2 equal?-recur) 
      (and (equal?-recur (get-adjlist g1) (get-adjlist g2))
@@ -95,7 +108,16 @@
        (add-vertex! G^T u)
        (for ([v (in-neighbors G u)])
         (add-directed-edge! G^T v u (edge-weight G u v))))
-     G^T)])
+     G^T)
+
+   (define (add-vertex-attr! g v attr [fmt "~a = \"~a\""])
+     ;; passed attributes are of the form '( <atom> <value> )
+     (unless (and (list? attr) (= (length attr) 2))
+       (raise-argument-error 'add-atrr! "cons?" attr))
+     (define attrs (get-attrs-hash g))
+     (hash-update! attrs v (λ (as) (set-add! as attr)) (set)))
+   (define (get-attrs g v)
+     (hash-ref (get-attrs-hash g) v (λ () (set))))])
 
 
 ;; An AdjacencyList is a [MutableHashOf Vertex -> [Setof Vertex]]
@@ -114,18 +136,20 @@
 (define (mk-weighted-graph/undirected es)
   (define adj (make-hash))
   (define weights (make-hash))
+  (define attrs (make-hash))
   (for ([w+e es])
     (cond [(list? w+e) 
            (define e (unsafe-cdr w+e))       (define w (unsafe-car w+e))
            (apply add-edge@ adj e)           (hash-set! weights e w)
            (apply add-edge@ adj (reverse e)) (hash-set! weights (reverse e) w)]
           [else (add-vertex@ adj w+e)])) ; neighborless vertex
-  (weighted-graph adj weights))
+  (weighted-graph adj weights attrs))
 
 ;; directed graph constructor
 (define (mk-weighted-graph/directed es)
   (define adj (make-hash))
   (define weights (make-hash))
+  (define attrs (make-hash))
   (for ([w+e es]) 
     (cond [(list? w+e) 
            (define e (unsafe-cdr w+e)) (define w (unsafe-car w+e)) 
@@ -133,7 +157,7 @@
            (add-vertex@ adj (unsafe-car (unsafe-cdr e)))
            (hash-set! weights e w)]
           [else (add-vertex@ adj w+e)]))
-  (weighted-graph adj weights))
+  (weighted-graph adj weights attrs))
 
 (define (mk-directed-graph es [ws #f])
   (unless (list? es)
@@ -148,13 +172,14 @@
                                   "weights" ws))
          (define adj (make-hash))
          (define weights (make-hash))
+         (define attrs (make-hash))
          (for ([e es] [w ws]) 
            (unless (and (list? e) (= (length e) 2))
              (raise-argument-error 'directed-graph "edge, as length 2 list" e))
            (apply add-edge@ adj e)
            (add-vertex@ adj (unsafe-car (unsafe-cdr e)))
            (hash-set! weights e w))
-         (weighted-graph adj weights)]
+         (weighted-graph adj weights attrs)]
         [else (mk-unweighted-graph/directed es)]))
 
 (define (mk-undirected-graph es [ws #f])
@@ -170,6 +195,7 @@
                                   "weights" ws))
          (define adj (make-hash))
          (define weights (make-hash))
+         (define attrs (make-hash))
          (for ([e es] [w ws])
            (unless (and (list? e) (= (length e) 2))
              (raise-argument-error 'undirected-graph "edge, as length 2 list" e))
@@ -177,10 +203,9 @@
            (apply add-edge@ adj (reverse e))
            (hash-set! weights e w)
            (hash-set! weights (reverse e) w))
-         (weighted-graph adj weights)]
+         (weighted-graph adj weights attrs)]
         [else (mk-unweighted-graph/undirected es)]))
          
-
 ;; returns vertices as a list
 ;; - analogous to hash-keys vs in-hash-keys
 (define (get-weighted-graph-vertices g) (hash-keys (get-adjlist g)))

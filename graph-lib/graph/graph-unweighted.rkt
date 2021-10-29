@@ -13,6 +13,7 @@
          unweighted-graph?)
 
 (define-syntax-rule (get-adjlist g) (unsafe-struct*-ref g 0))
+;; (define-syntax-rule (get-attrs-hash g) (unsafe-struct*-ref g 1))
 
 ;; A Graph is a (graph AdjacencyList)
 (struct unweighted-graph (adjlist) 
@@ -72,7 +73,19 @@
        (add-vertex@ adj^T u)
        (for ([v (in-neighbors G u)])
          (add-edge@ adj^T v u)))
-     (unweighted-graph adj^T))])
+     (unweighted-graph adj^T))
+   (define (add-vertex-attr! g v attr [fmt "~a = \"~a\""])
+     (raise-argument-error 'add-vertex-attr! "not implemented" g)
+     ;; passed attributes are of the form '( <atom> <value> )
+     ;; (unless (and (list? attr) (= (length attr) 2))
+     ;;   (raise-argument-error 'add-atrr! "cons?" attr))
+     ;; (define attrs (get-attrs g))
+     ;; (hash-update! attrs v (λ (as) (set-add! as attr)) (set))
+     )
+   (define (get-attrs g v)
+     (raise-argument-error 'add-vertex-attr! "not implemented" g)
+     ;; (hash-ref (get-attrs-hash g) v (λ () (set)))
+     )])
 
 
 ;; An AdjacencyList is a [MutableHashOf Vertex -> [Setof Vertex]]
