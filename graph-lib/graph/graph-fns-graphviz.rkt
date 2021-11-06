@@ -40,37 +40,33 @@
        ; Add vertices, color them using evenly spaced HSV colors if given colors
        (define color-count (and colors (add1 (apply max (hash-values colors)))))
     (for ([v (in-vertices g)])
-      (cond
-        ; HACK just ignoring colors
-        ;; [(and color-count (hash-ref colors v #f))
-        ;;  (printf "\t~a [label=~a,color=\"~a 1.0 1.0\"];\n" (node-id-table-ref! v)
-        ;;          (sanatize-name v)
-        ;;          (~a #:max-width 5
-        ;;              (exact->inexact (/ (hash-ref colors v #f) color-count))))]
-        [else
-         (let ((attrs (hash-ref (get-attrs g) v (λ () (set)))))
-           (begin
-             (set-add! attrs '('label (sanatize-name v)))
-             (printf
-                (string-join
-                 (map (λ (attr)
-                        (match attr
-                          [(list a-ty (cons x y))
-                           #:when (eq? a-ty 'pos)
-                           (format "pos = \"~a,~a\"" x y)]
-                          [(list a-ty lbl)
-                           #:when (eq? a-ty 'label)
-                           (format "label = \"~a\"" lbl)]
-                          [a
-                           (raise-mismatch-error 'graphviz
-                                                 "unrecognized node attribute"
-                                                 a)])) (set->list attrs)) ";"
-                 #:before-first "["
-                 #:after-last "]"))))]
-        ;; [else
-        ;;  (printf "\t~a [label=~a];\n"
-        ;;          (node-id-table-ref! v)
-        ;;          (sanatize-name v))]
+      (let ((v (inexact->exact v)))
+        (printf "[label=~a" (sanatize-name v))
+        ;; (add-vertex-attr! g v 'label (sanatize-name v))
+          ; HACK just ignoring colors
+          ;; [(and color-count (hash-ref colors v #f))
+          ;;  (printf "\t~a [label=~a,color=\"~a 1.0 1.0\"];\n" (node-id-table-ref! v)
+          ;;          (sanatize-name v)
+          ;;          (~a #:max-width 5
+          ;;              (exact->inexact (/ (hash-ref colors v #f) color-count))))]
+        ;; HACK major HACK
+        (hash-map (get-attrs g v) (λ (lbl attr)
+                                    (let* ((data (unsafe-cdr attr))
+                                           (x (unsafe-car data))
+                                           (y (unsafe-cdr data)))
+                                      (printf "; pos=\"~a,~a\"" x y))))
+        (printf "];\n")
+        ;; (let* ((attrs (get-attrs g v)))
+        ;;   (printf (string-join (hash-map attrs (λ (lbl attr)
+        ;;                                          (let ((fmt (unsafe-car attr))
+        ;;                                                (data (unsafe-cdr attr)))
+        ;;                                            (fmt lbl data)))) "; "
+        ;;                        #:before-first (format "\t~a [" (node-id-table-ref! v))
+        ;;                        #:after-last "];\n")))]
+          ;; [else
+          ;;  (printf "\t~a [label=~a];\n"
+          ;;          (node-id-table-ref! v)
+          ;;          (sanatize-name v))]
         ))
         
     ; Write undirected edges as one subgraph

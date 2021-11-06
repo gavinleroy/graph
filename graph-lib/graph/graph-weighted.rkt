@@ -109,16 +109,20 @@
        (for ([v (in-neighbors G u)])
         (add-directed-edge! G^T v u (edge-weight G u v))))
      G^T)
-
-   (define (add-vertex-attr! g v attr [fmt "~a = \"~a\""])
+   (define (add-vertex-attr! g v label data [fmtf (λ (lbl d) (format "~a=~a" lbl d))])
      ;; passed attributes are of the form '( <atom> <value> )
-     (unless (and (list? attr) (= (length attr) 2))
-       (raise-argument-error 'add-atrr! "cons?" attr))
+     (unless (symbol? label)
+       (raise-argument-error 'add-vertex-attr "symbol?" label))
      (define attrs (get-attrs-hash g))
-     (hash-update! attrs v (λ (as) (set-add! as attr)) (set)))
+     ;; HACK this is so bad
+     (define v-s (format "~a.0" v))
+     (hash-update! attrs v-s (λ (hsh)
+                             (begin (hash-set! hsh label (cons fmtf data))
+                                    hsh)) (make-hash)))
    (define (get-attrs g v)
-     (hash-ref (get-attrs-hash g) v (λ () (set))))])
-
+     (let* ((attrs (get-attrs-hash g))
+            (ret (hash-ref attrs (format "~a" v) (λ () (make-hash)))))
+       ret))])
 
 ;; An AdjacencyList is a [MutableHashOf Vertex -> [Setof Vertex]]
 ;;   and is the internal graph representation

@@ -23,5 +23,5 @@
   (transpose graph)
   (graph-copy graph)
   (graph-union! graph other)
-  (add-vertex-attr! graph v attr [fmt])
+  (add-vertex-attr! graph v label data [fmtf])
   (get-attrs graph v))

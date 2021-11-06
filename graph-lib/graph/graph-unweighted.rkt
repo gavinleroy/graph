@@ -13,10 +13,10 @@
          unweighted-graph?)
 
 (define-syntax-rule (get-adjlist g) (unsafe-struct*-ref g 0))
-;; (define-syntax-rule (get-attrs-hash g) (unsafe-struct*-ref g 1))
+(define-syntax-rule (get-attrs-hash g) (unsafe-struct*-ref g 1))
 
 ;; A Graph is a (graph AdjacencyList)
-(struct unweighted-graph (adjlist) 
+(struct unweighted-graph (adjlist attrs)
    #:methods gen:equal+hash
   [(define (equal-proc g1 g2 equal?-recur) 
      (equal?-recur (get-adjlist g1) (get-adjlist g2)))
@@ -74,19 +74,17 @@
        (for ([v (in-neighbors G u)])
          (add-edge@ adj^T v u)))
      (unweighted-graph adj^T))
-   (define (add-vertex-attr! g v attr [fmt "~a = \"~a\""])
-     (raise-argument-error 'add-vertex-attr! "not implemented" g)
+   (define (add-vertex-attr! g v label data [fmtf (λ (lbl d) (format "~a=~a" lbl d))])
      ;; passed attributes are of the form '( <atom> <value> )
-     ;; (unless (and (list? attr) (= (length attr) 2))
-     ;;   (raise-argument-error 'add-atrr! "cons?" attr))
-     ;; (define attrs (get-attrs g))
-     ;; (hash-update! attrs v (λ (as) (set-add! as attr)) (set))
-     )
+     (unless (symbol? label)
+       (raise-argument-error 'add-vertex-attr "symbol?" label))
+     (define attrs (get-attrs-hash g))
+     (hash-update! attrs v (λ (hsh)
+                             (begin (hash-set! hsh label (cons fmtf data))
+                                    hsh)) (make-hash)))
    (define (get-attrs g v)
-     (raise-argument-error 'add-vertex-attr! "not implemented" g)
-     ;; (hash-ref (get-attrs-hash g) v (λ () (set)))
-     )])
-
+     (let* ((attrs (get-attrs-hash g)))
+       (hash-ref attrs v (λ () (make-hash)))))])
 
 ;; An AdjacencyList is a [MutableHashOf Vertex -> [Setof Vertex]]
 ;;   and is the internal graph representation
@@ -98,6 +96,7 @@
 ;; [Listof (list Vertex Vertex)] -> Graph
 (define (mk-unweighted-graph/undirected es)
   (define adj (make-hash))
+  (define attrs (make-hash))
   (for ([e es])
     (cond [(list? e)
            (unless (= (length e) 2)
@@ -105,11 +104,12 @@
            (apply add-edge@ adj e)
            (apply add-edge@ adj (reverse e))]
           [else (add-vertex@ adj e)])) ; neighborless vertices
-  (unweighted-graph adj))
+  (unweighted-graph adj attrs))
 
 ;; directed graph constructor
 (define (mk-unweighted-graph/directed es)
   (define adj (make-hash))
+  (define attrs (make-hash))
   (for ([e es]) 
     (cond [(list? e)
            (unless (= (length e) 2)
@@ -117,10 +117,11 @@
            (apply add-edge@ adj e)
            (add-vertex@ adj (unsafe-car (unsafe-cdr e)))]
           [else (add-vertex@ adj e)]))
-  (unweighted-graph adj))
+  (unweighted-graph adj attrs))
 
 (define (mk-unweighted-graph/adj adj)
   (define adj-hash (make-hash))
+  (define attrs (make-hash))
   (for ([vs adj]) 
     (define u (unsafe-car vs)) 
     (define us (unsafe-cdr vs))
@@ -128,7 +129,7 @@
                                      (apply set us)))
     (for ([v us] #:unless (hash-has-key? adj-hash v)) 
       (hash-set! adj-hash v (set))))
-  (unweighted-graph adj-hash))
+  (unweighted-graph adj-hash attrs))
 
 
 ;; returns vertices as a list
