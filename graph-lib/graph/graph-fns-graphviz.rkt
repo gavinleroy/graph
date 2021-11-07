@@ -41,7 +41,7 @@
        (define color-count (and colors (add1 (apply max (hash-values colors)))))
     (for ([v (in-vertices g)])
       (let ((v (inexact->exact v)))
-        (printf "[label=~a" (sanatize-name v))
+        (printf "\t~a [label=~a" (node-id-table-ref! v) (sanatize-name v))
         ;; (add-vertex-attr! g v 'label (sanatize-name v))
           ; HACK just ignoring colors
           ;; [(and color-count (hash-ref colors v #f))
@@ -54,7 +54,7 @@
                                     (let* ((data (unsafe-cdr attr))
                                            (x (unsafe-car data))
                                            (y (unsafe-cdr data)))
-                                      (printf "; pos=\"~a,~a\"" x y))))
+                                      (printf "; pos=\"~a,~a!\"" x y))))
         (printf "];\n")
         ;; (let* ((attrs (get-attrs g v)))
         ;;   (printf (string-join (hash-map attrs (λ (lbl attr)
